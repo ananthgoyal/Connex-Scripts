@@ -7,13 +7,22 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
-
+import time
 from bs4 import BeautifulSoup
 import pandas as pd
 import sendgrid
 import os
-from sendgrid.helpers.mail import *
+from sendgrid.helpers.mail import *  # noqa: F403
 from twilio.rest import Client
+
+class Job:
+    def __init__(self, name = "", company = "", type = "", salary = "", active = True):
+        self.name = ""
+        self.company = ""
+        self.type = ""
+        self.salary = ""
+        self.link = ""
+        self.active = active
 
 
 class JobScraper:
@@ -29,51 +38,34 @@ class JobScraper:
         options = Options()
         #options.headless = True
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-        self.soup = BeautifulSoup(self.filter_website(), "html.parser")
+        #self.soup = BeautifulSoup(self.load_and_filter(), "html.parser")
         self.dynamodb = boto3.resource("dynamodb", region_name='us-west-2')
+        self.actions = ActionChains(self.driver)
+
     
-    def load_site(self):
+    def load_and_filter(self):
+        """
+        Go to link, finds all matching groups.
+        """
         self.driver.get(self.URL)
-        
-        return
+        #page_source = self.driver.page_source
+        return self.driver.find_elements(By.CLASS_NAME, value="company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
 
-    def filter_website(self):
+    def compile(self):
         """
-        Go to website and filter by SWE jobs
-        Return the page source for soup to parse
-        :return:
-        """
-        # Navigate to the link
-        self.driver.get(self.URL)
-        """
-        # Filter by Software Engineer
-        roles_dropdown = self.driver.find_element(by="id", value="dropdownMenuButton")
-        roles_dropdown.click()
-
-        # Select Software Engineer and click out of dropdown
-        #swe = self.driver.find_element(by="xpath",
-                                       #value="Software Engineer") #/html/body/div[2]/div[1]/div[1]/div[1]/div/div/div[1]/label/input
-        swe = self.driver.find_element(By.CLASS_NAME, "checkbox")
-        swe.click()
-        roles_dropdown.click()"""
-
-        # Save page source to return before closing driver
-        page_source = self.driver.page_source
-        lst = self.driver.find_elements(By.CLASS_NAME, value="company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
-        #print(lst)
-        actions = ActionChains(self.driver)
-        actions.move_to_element(lst[1]).click().perform()
-        #first.click()
-        #self.driver.close()
-
-        return page_source
-
-    def scrape_jobs(self):
-        """
-        Web scrape for new jobs and send notifications
+        Scrape jobs
         """
         # Retrieve the table of job listings
+        groups = self.load_and_filter()
+        print(groups)
+        curr = groups
+        for i in range(len(groups)):
+            self.actions.move_to_element(curr[i]).click().perform()
 
+
+            time.sleep(3)
+            curr = self.load_and_filter()
+        return
         
         '''
         table = self.soup.find("table", attrs={"class": "hiring-companies-table"})
@@ -241,4 +233,4 @@ class JobScraper:
 
 if __name__ == '__main__':
     js = JobScraper()
-    js.scrape_jobs()
+    js.compile()
