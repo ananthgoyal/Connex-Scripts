@@ -16,24 +16,29 @@ from sendgrid.helpers.mail import *  # noqa: F403
 from twilio.rest import Client
 
 class Job:
-    def __init__(self, name = "", company = "", type = "", salary = "", active = True):
-        self.name = ""
-        self.company = ""
-        self.type = ""
+    def __init__(self, name = "", company = "", type = "", salary = "", link = "", active = True):
+        self.name = name
+        self.company = company
+        self.type = type
         self.salary = ""
-        self.link = ""
-        self.active = active
-
+        self.link = link
+    
+    def __repr__(self):
+        s = self.company + "\n" + self.type + "\n" + self.name + "\n"
+        s += "\n"
+        return s
 
 class JobScraper:
-    def __init__(self):
+    def __init__(self, url, type):
         """
         Initialize job list, Selenium Chrome Driver, BeautifulSoup, and DynamoDB objects
         """
-        self.URL = 'https://www.levels.fyi/jobs/title/product-manager/level/internship?jobId=137270530722931398'
+        self.URL = url
 
         # Initialize main objects
         self.jobs = []
+        self.mp = {}
+        self.type = type
 
         options = Options()
         #options.headless = True
@@ -67,18 +72,40 @@ class JobScraper:
             self.actions.move_to_element(curr[j]).click().perform()
             time.sleep(1)
             company_element = self.driver.find_element(By.CLASS_NAME, value="company-jobs-preview-card_companyNameAndPromotedContainer__y1dQK")
-            print(company_element.text)
+            comp_text = company_element.text
             jobs = self.filter("company-jobs-preview-card_companyJobContainer___zVGi")
+            #print(jobs)
+            n = len(jobs)
             if i > 0:
-                for j in range(len(jobs)):
-                    try: 
-                        self.actions.move_to_element(jobs[j]).click().perform()
-                    except Exception:
-                        print("skip")
-                    time.sleep(1.5)
-            print(jobs)
-            time.sleep(1)
+                for j in range(n):
+                    self.actions.move_to_element(jobs[j]).click().perform()
+                    time.sleep(0.25)
+
+                    title_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_jobTitleRow__mAQC0")
+                    time.sleep(0.25)
+
+                    title = title_elem.text.split("\n")[0]
+                    print(title)
+
+                    link_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_applyNowButton__Z_Kd6")
+                    time.sleep(0.25)
+                    link = link_elem.get_attribute("href")
+                    print(link)
+
+                    job = Job(name = title, company=comp_text, type=self.type, link=link)
+                    self.jobs.append(job)
+                    #self.mp[company_element.text] = self.mp.get(company_element.text, []) + [job]
+                    #self.driver.get(self.URL)
+                    self.driver.refresh()
+                    time.sleep(0.25)
+                    jobs = self.filter("company-jobs-preview-card_companyJobContainer___zVGi")
+                    time.sleep(0.25)
+
+            #time.sleep(0.5)
             curr = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
+        
+        for job in self.jobs:
+            print(job)
         return
         
         '''
@@ -246,5 +273,5 @@ class JobScraper:
 
 
 if __name__ == '__main__':
-    js = JobScraper()
+    js = JobScraper('https://www.levels.fyi/jobs/title/product-manager/level/internship?jobId=137270530722931398', "Product Manager")
     js.compile()
