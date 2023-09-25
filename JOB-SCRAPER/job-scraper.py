@@ -43,28 +43,42 @@ class JobScraper:
         self.actions = ActionChains(self.driver)
 
     
-    def load_and_filter(self):
+    def load_and_filter(self, url, id):
         """
         Go to link, finds all matching groups.
         """
-        self.driver.get(self.URL)
+        self.driver.get(url)
         #page_source = self.driver.page_source
-        return self.driver.find_elements(By.CLASS_NAME, value="company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
+        return self.driver.find_elements(By.CLASS_NAME, value=id)
 
+    def filter(self, id):
+        return self.driver.find_elements(By.CLASS_NAME, value=id)
+    
     def compile(self):
         """
         Scrape jobs
         """
         # Retrieve the table of job listings
-        groups = self.load_and_filter()
+        groups = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
         print(groups)
         curr = groups
-        for i in range(len(groups)):
-            self.actions.move_to_element(curr[i]).click().perform()
-
-
-            time.sleep(3)
-            curr = self.load_and_filter()
+        for i in range(len(groups) + 1):
+            j = i % len(groups)
+            self.actions.move_to_element(curr[j]).click().perform()
+            time.sleep(1)
+            company_element = self.driver.find_element(By.CLASS_NAME, value="company-jobs-preview-card_companyNameAndPromotedContainer__y1dQK")
+            print(company_element.text)
+            jobs = self.filter("company-jobs-preview-card_companyJobContainer___zVGi")
+            if i > 0:
+                for j in range(len(jobs)):
+                    try: 
+                        self.actions.move_to_element(jobs[j]).click().perform()
+                    except Exception:
+                        print("skip")
+                    time.sleep(1.5)
+            print(jobs)
+            time.sleep(1)
+            curr = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
         return
         
         '''
