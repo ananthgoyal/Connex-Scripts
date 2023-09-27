@@ -14,6 +14,7 @@ import sendgrid
 import os
 from sendgrid.helpers.mail import *  # noqa: F403
 from twilio.rest import Client
+import csv 
 
 class Job:
     def __init__(self, name = "", company = "", type = "", salary = "", link = "", active = True):
@@ -72,6 +73,8 @@ class JobScraper:
             self.actions.move_to_element(curr[j]).click().perform()
             time.sleep(1)
             company_element = self.driver.find_element(By.CLASS_NAME, value="company-jobs-preview-card_companyNameAndPromotedContainer__y1dQK")
+            self.driver.implicitly_wait(1)
+
             comp_text = company_element.text
             jobs = self.filter("company-jobs-preview-card_companyJobContainer___zVGi")
             #print(jobs)
@@ -79,15 +82,23 @@ class JobScraper:
             if i > 0:
                 for j in range(n):
                     self.actions.move_to_element(jobs[j]).click().perform()
-                    time.sleep(0.25)
+                    time.sleep(0.5)
 
                     title_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_jobTitleRow__mAQC0")
-                    time.sleep(0.25)
+                    self.driver.implicitly_wait(10)
+
+                    #self.driver.refresh()
+
+                    #time.sleep(0.5)
 
                     title = title_elem.text.split("\n")[0]
+                    self.driver.implicitly_wait(10)
+
                     print(title)
 
                     link_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_applyNowButton__Z_Kd6")
+                    self.driver.implicitly_wait(1)
+
                     time.sleep(0.25)
                     link = link_elem.get_attribute("href")
                     print(link)
@@ -103,9 +114,13 @@ class JobScraper:
 
             #time.sleep(0.5)
             curr = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
-        
-        for job in self.jobs:
-            print(job)
+        with open('tests/test1.csv', 'w', newline='') as csvfile:
+            csvfile.truncate()
+            writer = csv.writer(csvfile, delimiter=' ',
+                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for job in self.jobs:
+                print(job)
+                writer.writerow([job.company, job.type, job.name, job.link])
         return
         
         '''
