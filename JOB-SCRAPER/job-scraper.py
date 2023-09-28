@@ -30,16 +30,21 @@ class Job:
         return s
 
 class JobScraper:
-    def __init__(self, url, type):
+    def __init__(self, url1, url2, type):
         """
         Initialize job list, Selenium Chrome Driver, BeautifulSoup, and DynamoDB objects
         """
-        self.URL = url
+        self.url1 = url1
+        self.url2 = url2
+        self.URL = url1 + str(0) + url2
 
         # Initialize main objects
         self.jobs = []
         self.mp = {}
+        self.links = set()
         self.type = type
+        self.count = 0
+        self.offset = 0
 
         options = Options()
         #options.headless = True
@@ -54,6 +59,7 @@ class JobScraper:
         Go to link, finds all matching groups.
         """
         self.driver.get(url)
+
         #page_source = self.driver.page_source
         return self.driver.find_elements(By.CLASS_NAME, value=id)
 
@@ -65,11 +71,32 @@ class JobScraper:
         Scrape jobs
         """
         # Retrieve the table of job listings
+        '''
+        print(self.count)
+        for _ in range(3):
+            arrow = self.driver.find_element(By.CLASS_NAME, "MuiButton-root.MuiButton-text.MuiButton-textPrimary.MuiButton-sizeSmall.MuiButton-textSizeSmall.MuiButtonBase-root.css-1f3e5dk")
+            self.driver.implicitly_wait(10)
+            self.actions.move_to_element(arrow).click().perform()
+            self.driver.implicitly_wait(10)
+            time.sleep(5)
+
+            #time.sleep(5)
+        '''
+        
         groups = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
+        self.driver.implicitly_wait(10)
         print(groups)
         curr = groups
         for i in range(len(groups) + 1):
             j = i % len(groups)
+            print()
+            print()
+            print(curr)
+            print()
+            print()
+            print(j)
+            print()
+            print()
             self.actions.move_to_element(curr[j]).click().perform()
             time.sleep(1)
             company_element = self.driver.find_element(By.CLASS_NAME, value="company-jobs-preview-card_companyNameAndPromotedContainer__y1dQK")
@@ -79,17 +106,13 @@ class JobScraper:
             jobs = self.filter("company-jobs-preview-card_companyJobContainer___zVGi")
             #print(jobs)
             n = len(jobs)
-            if i > 0:
+            if i > 0 or self.count >= 1:
                 for j in range(n):
                     self.actions.move_to_element(jobs[j]).click().perform()
                     time.sleep(0.5)
 
                     title_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_jobTitleRow__mAQC0")
                     self.driver.implicitly_wait(10)
-
-                    #self.driver.refresh()
-
-                    #time.sleep(0.5)
 
                     title = title_elem.text.split("\n")[0]
                     self.driver.implicitly_wait(10)
@@ -102,18 +125,29 @@ class JobScraper:
                     time.sleep(0.25)
                     link = link_elem.get_attribute("href")
                     print(link)
-
-                    job = Job(name = title, company=comp_text, type=self.type, link=link)
-                    self.jobs.append(job)
+                    if link not in self.links:
+                        job = Job(name = title, company=comp_text, type=self.type, link=link)
+                        self.jobs.append(job)
+                        self.links.add(link)
                     #self.mp[company_element.text] = self.mp.get(company_element.text, []) + [job]
                     #self.driver.get(self.URL)
-                    self.driver.refresh()
+                    #self.driver.refresh()
                     time.sleep(0.25)
                     jobs = self.filter("company-jobs-preview-card_companyJobContainer___zVGi")
+                    self.driver.implicitly_wait(5)
                     time.sleep(0.25)
+                back = self.driver.find_element(By.CLASS_NAME, "jobs-directory-body_backToCompaniesButton__IakHM")
+                self.driver.implicitly_wait(2)
+                self.actions.move_to_element(back).click().perform()
+                self.driver.implicitly_wait(2)
+                #curr = self.filter("company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
+                #self.driver.implicitly_wait(5)
+            curr = self.filter("company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
+            #self.driver.implicitly_wait(5)
 
-            #time.sleep(0.5)
-            curr = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
+            #self.driver.refresh()
+
+            #curr = self.load_and_filter(self.URL, "company-jobs-preview-card_companyOtherJobsTitle__cmhU8")
         with open('tests/test1.csv', 'w', newline='') as csvfile:
             csvfile.truncate()
             writer = csv.writer(csvfile, delimiter=' ',
@@ -121,8 +155,25 @@ class JobScraper:
             for job in self.jobs:
                 print(job)
                 writer.writerow([job.company, job.type, job.name, job.link])
-        return
+        #self.driver.get(self.URL)
+        #self.driver.implicitly_wait(10)
+        #print(self.URL)
         
+        #self.driver.find_element()
+        #self.URL = self.driver.current_url
+        #print(self.URL)
+        '''arrow = self.driver.find_element(By.CLASS_NAME, "MuiButton-root.MuiButton-text.MuiButton-textPrimary.MuiButton-sizeSmall.MuiButton-textSizeSmall.MuiButtonBase-root.css-1f3e5dk")
+        self.driver.implicitly_wait(10)
+        self.actions.move_to_element(arrow).click().perform()
+        time.sleep(5)'''
+        self.count += 1
+        self.offset += 5
+        self.URL = self.url1 + str(self.offset) + self.url2
+        self.driver.refresh()
+        time.sleep(3)
+        self.compile()
+
+
         '''
         table = self.soup.find("table", attrs={"class": "hiring-companies-table"})
 
@@ -178,7 +229,7 @@ class JobScraper:
             print("Email sent successfully")
         except Exception as e:
             print(e)
-
+    '''
     def send_text(self):
         """
         Send text alert to notify of new job(s)
@@ -285,8 +336,9 @@ class JobScraper:
         df = pd.DataFrame(job_list, columns=["Company", "Location", "Date", "Link"])
 
         return df
-
+'''
 
 if __name__ == '__main__':
-    js = JobScraper('https://www.levels.fyi/jobs/title/product-manager/level/internship?jobId=137270530722931398', "Product Manager")
+    js = JobScraper('https://www.levels.fyi/jobs/title/product-manager/level/internship?offset=', "&jobId=137270530722931398", "Product Manager")
+    js.driver.get(js.URL)
     js.compile()
