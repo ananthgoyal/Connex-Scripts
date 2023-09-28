@@ -17,8 +17,9 @@ from twilio.rest import Client
 import csv 
 
 class Job:
-    def __init__(self, name = "", company = "", type = "", salary = "", link = "", active = True):
+    def __init__(self, name = "", company = "", type = "", salary = "", link = "", loc = "", active = True):
         self.name = name
+        self.loc = loc
         self.company = company
         self.type = type
         self.salary = ""
@@ -89,14 +90,7 @@ class JobScraper:
         curr = groups
         for i in range(len(groups) + 1):
             j = i % len(groups)
-            print()
-            print()
-            print(curr)
-            print()
-            print()
-            print(j)
-            print()
-            print()
+        
             self.actions.move_to_element(curr[j]).click().perform()
             time.sleep(1)
             company_element = self.driver.find_element(By.CLASS_NAME, value="company-jobs-preview-card_companyNameAndPromotedContainer__y1dQK")
@@ -113,11 +107,25 @@ class JobScraper:
 
                     title_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_jobTitleRow__mAQC0")
                     self.driver.implicitly_wait(10)
-
                     title = title_elem.text.split("\n")[0]
+                    
                     self.driver.implicitly_wait(10)
 
                     print(title)
+                    try:
+                        loc_elem  = self.driver.find_element(By.CLASS_NAME, "job-details-header_detailsRow__uxNNB")
+                        self.driver.implicitly_wait(10)
+                        arr = loc_elem.text.split("·")
+                        if len(arr) == 3:
+                            loc = arr[-1]
+                        else:
+                            loc = arr[-2]
+                    except Exception:
+                        loc = "view link"
+                    #loc = loc_elem.text.split("·")[-2]
+                    self.driver.implicitly_wait(10)
+
+                    print(loc)
 
                     link_elem = self.driver.find_element(By.CLASS_NAME, "job-details-header_applyNowButton__Z_Kd6")
                     self.driver.implicitly_wait(1)
@@ -126,7 +134,7 @@ class JobScraper:
                     link = link_elem.get_attribute("href")
                     print(link)
                     if link not in self.links:
-                        job = Job(name = title, company=comp_text, type=self.type, link=link)
+                        job = Job(name = title, company=comp_text, type=self.type, link=link, loc=loc)
                         self.jobs.append(job)
                         self.links.add(link)
                     #self.mp[company_element.text] = self.mp.get(company_element.text, []) + [job]
@@ -154,7 +162,7 @@ class JobScraper:
                             quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for job in self.jobs:
                 print(job)
-                writer.writerow([job.company, job.type, job.name, job.link])
+                writer.writerow([job.company, job.type, job.name, job.loc, job.link])
         #self.driver.get(self.URL)
         #self.driver.implicitly_wait(10)
         #print(self.URL)
@@ -169,8 +177,9 @@ class JobScraper:
         self.count += 1
         self.offset += 5
         self.URL = self.url1 + str(self.offset) + self.url2
-        self.driver.refresh()
-        time.sleep(3)
+        self.driver.get(self.URL)
+        #self.driver.refresh()
+        time.sleep(2)
         self.compile()
 
 
